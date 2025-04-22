@@ -26,10 +26,10 @@ public:
     inline std::vector<Token> tokenize() {
         std::string buffer;
         std::vector<Token> tokens;
-        while (peak().has_value()) {
-            if (std::isalpha(peak().value())){
+        while (peek().has_value()) {
+            if (std::isalpha(peek().value())){
                 buffer.push_back(consume());
-                while (peak().has_value() && std::isalnum(peak().value())) {
+                while (peek().has_value() && std::isalnum(peek().value())) {
                     buffer.push_back(consume());
                 }
                 if (buffer=="exit") {
@@ -42,20 +42,20 @@ public:
                 }
 
             }
-            else if (std::isdigit(peak().value())) {
+            else if (std::isdigit(peek().value())) {
                 buffer.push_back(consume());
-                while (peak().has_value() && std::isdigit(peak().value())) {
+                while (peek().has_value() && std::isdigit(peek().value())) {
                     buffer.push_back(consume());
                 }
                 tokens.push_back({.type = TokenType::int_lit, .value = buffer});
                 buffer.clear();
             }
-            else if (peak().value() == ';') {
+            else if (peek().value() == ';') {
                 consume();
                 tokens.push_back({.type = TokenType::semi});
                 continue;
             }
-            else if (std::isspace(peak().value())) {
+            else if (std::isspace(peek().value())) {
                 consume();
                 continue;
             } else {
@@ -66,7 +66,7 @@ public:
         return tokens;
     }
 private:
-    [[nodiscard]] inline std::optional<char> peak(const int ahead = 1) const {
+    [[nodiscard]] inline std::optional<char> peek(const int ahead = 1) const {
         if (m_index + ahead > m_src.length()) {
             return {};
         } else {
