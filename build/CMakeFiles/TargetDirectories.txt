@@ -1,0 +1,3 @@
+/home/chris/repos/compiler/hydrogen/build/CMakeFiles/hydro.dir
+/home/chris/repos/compiler/hydrogen/build/CMakeFiles/edit_cache.dir
+/home/chris/repos/compiler/hydrogen/build/CMakeFiles/rebuild_cache.dir
