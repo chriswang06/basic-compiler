@@ -7,7 +7,14 @@
 enum class TokenType {
     _exit,
     int_lit,
-    semi
+    semi,
+    open_paren,
+    closed_paren,
+    ident,
+    let,
+    eq,
+    plus,
+    multiply,
 };
 
 struct Token {
@@ -36,9 +43,16 @@ public:
                     tokens.push_back({.type = TokenType::_exit});
                     buffer.clear();
                     continue;
-                } else {
-                    std::cerr << "messup" << std::endl;
-                    exit(EXIT_FAILURE);
+                }
+                else if (buffer=="let") {
+                    tokens.push_back({.type = TokenType::let});
+                    buffer.clear();
+                    continue;
+                }
+                else {
+                    tokens.push_back({.type = TokenType::ident, .value= buffer});
+                    buffer.clear();
+                    continue;
                 }
 
             }
@@ -50,15 +64,42 @@ public:
                 tokens.push_back({.type = TokenType::int_lit, .value = buffer});
                 buffer.clear();
             }
+            else if (peek().value() == '(') {
+                consume();
+                tokens.push_back({.type = TokenType::open_paren});
+                continue;
+            }
+            else if (peek().value() == '=') {
+                consume();
+                tokens.push_back({.type = TokenType::eq});
+                continue;
+            }
+            else if (peek().value() == ')') {
+                consume();
+                tokens.push_back({.type = TokenType::closed_paren});
+                continue;
+            }
             else if (peek().value() == ';') {
                 consume();
                 tokens.push_back({.type = TokenType::semi});
                 continue;
             }
+            else if (peek().value() == '+') {
+                consume();
+                tokens.push_back({.type = TokenType::plus});
+                continue;
+            }
+            // else if (peek().value() == '*') {
+            //     consume();
+            //     tokens.push_back({.type = TokenType::multiply});
+            //     continue;
+            // }
             else if (std::isspace(peek().value())) {
                 consume();
                 continue;
-            } else {
+            }
+
+            else {
                 std::cerr << "messup" << std::endl;
                 exit(EXIT_FAILURE);
             }
@@ -66,11 +107,11 @@ public:
         return tokens;
     }
 private:
-    [[nodiscard]] inline std::optional<char> peek(const int ahead = 1) const {
-        if (m_index + ahead > m_src.length()) {
+    [[nodiscard]] inline std::optional<char> peek(const int offset = 0) const {
+        if (m_index + offset >= m_src.length()) {
             return {};
         } else {
-            return m_src.at(m_index);
+            return m_src.at(m_index + offset);
         }
     }
 
