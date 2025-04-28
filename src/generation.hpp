@@ -28,6 +28,31 @@ public:
         TermVisitor visitor({.gen = this});
         std::visit(visitor, term->var);
     }
+
+    void gen_bin_expr(const NodeBinExpr* bin_expr) {
+        struct BinExprVisitor{
+            Generator* gen;
+            void operator()(const NodeBinExprAdd* add) const {
+                gen->gen_expr(add->lhs);
+                gen->gen_expr(add->rhs);
+                gen->pop("rax");
+                gen->pop("rbx");
+                gen->m_output << "    add rax, rbx\n";
+                gen->push("rax");
+            }
+            void operator()(const NodeBinExprMult* mult) const {
+                gen->gen_expr(mult->lhs);
+                gen->gen_expr(mult->rhs);
+                gen->pop("rax");
+                gen->pop("rbx");
+                gen->m_output << "    mul rbx\n";
+                gen->push("rax");
+            }
+        };
+
+        BinExprVisitor visitor {.gen = this};
+        std::visit(visitor, bin_expr->var);
+    }
     void gen_expr(const NodeExpr* expr)  {
         struct ExprVisitor {
             Generator* gen;
@@ -36,12 +61,8 @@ public:
             }
             void operator()(const NodeBinExpr* bin_expr) const
             {
-                gen->gen_expr(bin_expr->add->lhs);
-                gen->gen_expr(bin_expr->add->rhs);
-                gen->pop("rax");
-                gen->pop("rbx");
-                gen->m_output << "    add rax, rbx\n";
-                gen->push("rax");
+                gen->gen_bin_expr(bin_expr);
+
             }
         };
         ExprVisitor visitor{.gen = this};
@@ -56,7 +77,7 @@ public:
                 gen->pop("rdi");
                 gen->m_output << "    syscall\n";
             }
-            void operator()(const NodeStmtLet* stmt_let) {
+            void operator()(const NodeStmtLet* stmt_let) const{
                 if (gen->m_vars.contains(stmt_let->ident.value.value())) {
                     std::cerr << "Identifier already used: " << stmt_let->ident.value.value() << std::endl;
                     exit(EXIT_FAILURE);
