@@ -1,4 +1,5 @@
 #pragma once
+#include <assert.h>
 #include <variant>
 
 #include "./tokenization.hpp"
@@ -14,6 +15,9 @@ struct NodeTermIdent {
 
 struct NodeExpr;
 
+struct NodeTermParen {
+    NodeExpr* expr;
+};
 struct NodeBinExprAdd {
     NodeExpr *lhs;
     NodeExpr *rhs;
@@ -23,15 +27,24 @@ struct NodeBinExprMult {
     NodeExpr *lhs;
     NodeExpr *rhs;
 };
+struct NodeBinExprSub {
+    NodeExpr *lhs;
+    NodeExpr *rhs;
+};
+struct NodeBinExprDiv {
+    NodeExpr *lhs;
+    NodeExpr *rhs;
+};
 
 struct NodeBinExpr {
-    std::variant<NodeBinExprAdd *, NodeBinExprMult *> var;
+    std::variant<NodeBinExprAdd *, NodeBinExprMult *, NodeBinExprSub*, NodeBinExprDiv*> var;
 };
 
 
 struct NodeTerm {
-    std::variant<NodeTermIntLit *, NodeTermIdent *> var;
+    std::variant<NodeTermIntLit *, NodeTermIdent *, NodeTermParen*> var;
 };
+
 
 struct NodeExpr {
     std::variant<NodeTerm *, NodeBinExpr *> var;
@@ -76,6 +89,18 @@ public:
             term_ident->ident = ident.value();
             auto term = m_allocator.alloc<NodeTerm>();
             term->var = term_ident;
+            return term;
+        } else if (auto open_paren = try_consume(TokenType::open_paren)) {
+            auto expr = parse_expr();
+            if (!expr.has_value()) {
+                std::cerr << "expected expression" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            try_consume(TokenType::closed_paren, "Expected ')'");
+            auto term_paren = m_allocator.alloc<NodeTermParen>();
+            term_paren->expr = expr.value();
+            auto term = m_allocator.alloc<NodeTerm>();
+            term->var = term_paren;
             return term;
         } else {
             return {};
@@ -125,6 +150,22 @@ public:
                 mult->lhs = expr_lhs2;
                 mult->rhs = expr_rhs.value();
                 expr->var = mult;
+            }
+            else if (op.type == TokenType::sub) {
+                auto sub = m_allocator.alloc<NodeBinExprSub>();
+                expr_lhs2->var = expr_lhs->var;
+                sub->lhs = expr_lhs2;
+                sub->rhs = expr_rhs.value();
+                expr->var = sub;
+            }
+            else if (op.type == TokenType::slash) {
+                auto div = m_allocator.alloc<NodeBinExprDiv>();
+                expr_lhs2->var = expr_lhs->var;
+                div->lhs = expr_lhs2;
+                div->rhs = expr_rhs.value();
+                expr->var = div;
+            } else {
+                assert(false && "unreachable");
             }
 
             expr_lhs->var = expr;
