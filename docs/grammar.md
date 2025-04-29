@@ -5,9 +5,14 @@ $$
     [\text{Stmt}] &\to 
     \begin{cases}
         \text{exit}([\text{Expr}]);\\
-        \text{let} \space\text{ident} = [\text{Expr}]
+        \text{let} \space\text{ident} = [\text{Expr}]\\
+        [\text{Scope}]\\
+        \text{if} ([\text{Expr}])[\text{Scope}]\\
     \end{cases}\\
-
+    [\text{Scope}] &\to
+    \begin{cases}
+        \{[\text{Stmt}]*\}\\
+    \end{cases}\\
     [\text{Expr}] &\to 
     \begin{cases}
         \text{Term};\\
@@ -17,7 +22,8 @@ $$
     [\text{Term}] &\to 
     \begin{cases}
         \text{int\_lit};\\
-        \text{ident}
+        \text{ident}\\
+        ([\text{Expr}])
 
     \end{cases}\\
     [\text{BinExpr}] &\to
