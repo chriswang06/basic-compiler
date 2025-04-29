@@ -138,7 +138,9 @@ public:
             }
             try_consume_err(TokenType::closed_paren);
             auto term_paren = m_allocator.emplace<NodeTermParen>();
+            term_paren->expr = expr.value();
             auto term = m_allocator.emplace<NodeTerm>();
+            term->var = term_paren;
             return term;
         }
         return {};

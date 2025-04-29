@@ -1,6 +1,9 @@
-let x = 5;
-x = x;
-x=x;
-x=x;
-if(x)
-
+let x = 0;
+if(1){
+x = 1;
+} elif (1){
+x = 2;
+} else{
+x = 3;
+}
+exit(x);
