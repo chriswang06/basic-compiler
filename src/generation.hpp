@@ -168,6 +168,18 @@ public:
                 gen.m_vars.push_back({.name = stmt_let->ident.value.value(), .stack_loc = gen.m_stack_size});
                 gen.gen_expr(stmt_let->expr);
             }
+            void operator()(const NodeStmtAssign* stmt_assign) const {
+                const auto it = std::ranges::find_if(gen.m_vars, [&](const Var& var) {
+                    return var.name == stmt_assign->ident.value.value();
+                });
+                if (it == gen.m_vars.end()) {
+                    std::cerr << "Undeclared identifier" << stmt_assign->ident.value.value() << std::endl;
+                    exit(EXIT_FAILURE);
+                }
+                gen.gen_expr(stmt_assign->expr);
+                gen.pop("rax");
+                gen.m_output << "    mov [rsp + " << (gen.m_stack_size - it->stack_loc -1) * 8 << "], rax\n";
+            }
 
             void operator()(const NodeScope *scope) const {
                 gen.gen_scope(scope);
@@ -194,6 +206,7 @@ public:
                 }
                 gen.m_output << "    ;; /if\n";
             }
+
         };
 
         StmtVisitor visitor{.gen = *this};

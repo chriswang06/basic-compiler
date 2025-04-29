@@ -6,9 +6,10 @@ $$
     \begin{cases}
         \text{exit}([\text{Expr}]);\\
         \text{let} \space\text{ident} = [\text{Expr}]\\
+                \text{ident} = [\text{Expr}]\\
         [\text{Scope}]\\
         \text{if} ([\text{Expr}])[\text{Scope}]\\
-        % [\text{IfPred}]
+
     \end{cases}\\
     [\text{Scope}] &\to
     \begin{cases}
