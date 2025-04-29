@@ -8,11 +8,19 @@ $$
         \text{let} \space\text{ident} = [\text{Expr}]\\
         [\text{Scope}]\\
         \text{if} ([\text{Expr}])[\text{Scope}]\\
+        % [\text{IfPred}]
     \end{cases}\\
     [\text{Scope}] &\to
     \begin{cases}
         \{[\text{Stmt}]*\}\\
     \end{cases}\\
+    [\text{IfPred}] & \to
+    \begin{cases}
+        \text{elif}(\text{[Expr]})\text{[Scope]}\\
+        \text{else}\text{[Scope]}\\
+        \epsilon
+    \end{cases}\\
+
     [\text{Expr}] &\to 
     \begin{cases}
         \text{Term};\\
