@@ -86,6 +86,119 @@ public:
         std::visit(visitor, bin_expr->var);
     }
 
+    void gen_cond_expr(const NodeCondExpr *cond_expr) {
+        struct CondExprVisitor {
+            Generator &gen;
+
+            void operator()(const NodeCondExprGreater *greater) const {
+                gen.gen_expr(greater->lhs);
+                gen.gen_expr(greater->rhs);
+                gen.pop("rax");
+                gen.pop("rbx");
+                const std::string true_label = "greater_" + gen.create_label();
+                const std::string end_label = "end_" + gen.create_label();
+
+                gen.m_output << "    cmp rbx, rax\n";
+                gen.m_output << "    jg " << true_label <<"\n";
+                gen.push("0");
+                gen.m_output << "    jmp " << end_label << "\n";
+                gen.m_output << true_label << ":\n";
+
+                gen.push("1");
+                gen.m_output << end_label << ":\n";
+            }
+            void operator()(const NodeCondExprGreaterEq *greater_eq) const {
+                gen.m_output << "    ;;comparing\n";
+                gen.gen_expr(greater_eq->lhs);
+                gen.gen_expr(greater_eq->rhs);
+                gen.pop("rax");
+                gen.pop("rbx");
+                const std::string true_label = "greater_eq_" + gen.create_label();
+                const std::string end_label = "end_" + gen.create_label();
+
+                gen.m_output << "    cmp rbx, rax\n";
+                gen.m_output << "    jge " << true_label <<"\n";
+                gen.push("0");
+                gen.m_output << "    jmp " << end_label << "\n";
+                gen.m_output << true_label << ":\n";
+
+                gen.push("1");
+                gen.m_output << end_label << ":\n";
+                gen.pop("rcx");
+            }
+            void operator()(const NodeCondExprLess *less) const {
+                gen.gen_expr(less->lhs);
+                gen.gen_expr(less->rhs);
+                gen.pop("rax");
+                gen.pop("rbx");
+                const std::string true_label = "less_" + gen.create_label();
+                const std::string end_label = "end_" + gen.create_label();
+
+                gen.m_output << "    cmp rbx, rax\n";
+                gen.m_output << "    jl " << true_label <<"\n";
+                gen.push("0");
+                gen.m_output << "    jmp " << end_label << "\n";
+                gen.m_output << true_label << ":\n";
+
+                gen.push("1");
+                gen.m_output << end_label << ":\n";
+            }
+            void operator()(const NodeCondExprLessEq *less_eq) const {
+                gen.gen_expr(less_eq->lhs);
+                gen.gen_expr(less_eq->rhs);
+                gen.pop("rax");
+                gen.pop("rbx");
+                const std::string true_label = "less_eq_" + gen.create_label();
+                const std::string end_label = "end_" + gen.create_label();
+
+                gen.m_output << "    cmp rbx, rax\n";
+                gen.m_output << "    jle " << true_label <<"\n";
+                gen.push("0");
+                gen.m_output << "    jmp " << end_label << "\n";
+                gen.m_output << true_label << ":\n";
+
+                gen.push("1");
+                gen.m_output << end_label << ":\n";
+            }
+            void operator()(const NodeCondExprEq *eq) const {
+                gen.gen_expr(eq->lhs);
+                gen.gen_expr(eq->rhs);
+                gen.pop("rax");
+                gen.pop("rbx");
+                const std::string true_label = "eq_" + gen.create_label();
+                const std::string end_label = "end_" + gen.create_label();
+
+                gen.m_output << "    cmp rbx, rax\n";
+                gen.m_output << "    je " << true_label <<"\n";
+                gen.push("0");
+                gen.m_output << "    jmp " << end_label << "\n";
+                gen.m_output << true_label << ":\n";
+
+                gen.push("1");
+                gen.m_output << end_label << ":\n";
+            }
+            void operator()(const NodeCondExprNotEq* _not_eq) const {
+                gen.gen_expr(_not_eq->lhs);
+                gen.gen_expr(_not_eq->rhs);
+                gen.pop("rax");
+                gen.pop("rbx");
+                const std::string true_label = "not_eq_" + gen.create_label();
+                const std::string end_label = "end_" + gen.create_label();
+
+                gen.m_output << "    cmp rbx, rax\n";
+                gen.m_output << "    jne " << true_label <<"\n";
+                gen.push("0");
+                gen.m_output << "    jmp " << end_label << "\n";
+                gen.m_output << true_label << ":\n";
+
+                gen.push("1");
+                gen.m_output << end_label << ":\n";
+            }
+
+        };
+        CondExprVisitor visitor{.gen = *this};
+        std::visit(visitor, cond_expr->var);
+    }
     void gen_expr(const NodeExpr *expr) {
         struct ExprVisitor {
             Generator &gen;
@@ -96,6 +209,9 @@ public:
 
             void operator()(const NodeBinExpr *bin_expr) const {
                 gen.gen_bin_expr(bin_expr);
+            }
+            void operator()(const NodeCondExpr* cond_expr) const {
+                gen.gen_cond_expr(cond_expr);
             }
         };
         ExprVisitor visitor{.gen = *this};
@@ -141,6 +257,7 @@ public:
         PredVisitor visitor { .gen = *this, .end_label = end_label };
         std::visit(visitor, pred->var);
     }
+
     void gen_stmt(const NodeStmt *stmt) {
         struct StmtVisitor {
             Generator &gen;
@@ -176,9 +293,11 @@ public:
                     std::cerr << "Undeclared identifier" << stmt_assign->ident.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
+                gen.m_output << "    ;;reassigning\n";
                 gen.gen_expr(stmt_assign->expr);
                 gen.pop("rax");
-                gen.m_output << "    mov [rsp + " << (gen.m_stack_size - it->stack_loc -1) * 8 << "], rax\n";
+                const size_t offset = (gen.m_stack_size - it->stack_loc -1) * 8;
+                gen.m_output << "    mov [rsp + " << offset << "], rax\n";
             }
 
             void operator()(const NodeScope *scope) const {
@@ -188,8 +307,10 @@ public:
             void operator()(const NodeStmtIf* stmt_if) const
             {
                 gen.m_output << "    ;; if\n";
+                // size_t size = gen.m_stack_size;
                 gen.gen_expr(stmt_if->expr);
                 gen.pop("rax");
+                // gen.m_stack_size = size;
                 const std::string label = gen.create_label();
                 gen.m_output << "    test rax, rax\n";
                 gen.m_output << "    jz " << label << "\n";

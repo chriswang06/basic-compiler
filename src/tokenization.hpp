@@ -9,6 +9,7 @@ enum class TokenType {
     if_,
     elif,
     else_,
+    while_,
     int_lit,
     semi,
     open_paren,
@@ -23,7 +24,12 @@ enum class TokenType {
     open_curly,
     closed_curly,
     greater,
+    greaterequal,
     less,
+    lessequal,
+    equiv,
+    notequiv,
+
 };
 
 inline bool is_bin_op(const TokenType type) {
@@ -86,10 +92,17 @@ inline std::optional<int> bin_prec(const TokenType type) {
     switch (type) {
         case TokenType::plus:
         case TokenType::minus:
-            return 0;
+            return 1;
         case TokenType::star:
         case TokenType::fslash:
-            return 1;
+            return 2;
+        case TokenType::greater:
+        case TokenType::greaterequal:
+        case TokenType::less:
+        case TokenType::lessequal:
+        case TokenType::equiv:
+        case TokenType::notequiv:
+            return 0;
         default:
             return {};
     }
@@ -134,6 +147,9 @@ public:
                 } else if (buffer == "else") {
                     tokens.push_back({TokenType::else_, line_count});
                     buffer.clear();
+                } else if (buffer == "while") {
+                    tokens.push_back({TokenType::while_, line_count});
+                    buffer.clear();
                 } else {
                     tokens.push_back({TokenType::ident, line_count, buffer});
                     buffer.clear();
@@ -166,7 +182,28 @@ public:
                 if (peek().has_value()) {
                     consume();
                 }
-            } else if (peek().value() == '(') {
+            }
+            else if (peek().value() == '=' && peek(1).has_value() && peek(1).value() == '=') {
+                consume();
+                consume();
+                tokens.push_back({TokenType::equiv, line_count});
+            }
+            else if (peek().value() == '!' && peek(1).has_value() && peek(1).value() == '=') {
+                consume();
+                consume();
+                tokens.push_back({TokenType::notequiv, line_count});
+            }
+            else if (peek().value() == '>' && peek(1).has_value() && peek(1).value() == '=') {
+                consume();
+                consume();
+                tokens.push_back({TokenType::greaterequal, line_count});
+            }
+            else if (peek().value() == '<' && peek(1).has_value() && peek(1).value() == '=') {
+                consume();
+                consume();
+                tokens.push_back({TokenType::lessequal, line_count});
+            }
+            else if (peek().value() == '(') {
                 consume();
                 tokens.push_back({TokenType::open_paren, line_count});
             } else if (peek().value() == '=') {

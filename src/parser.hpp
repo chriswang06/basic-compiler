@@ -47,11 +47,37 @@ struct NodeBinExpr {
 struct NodeTerm {
     std::variant<NodeTermIntLit *, NodeTermIdent *, NodeTermParen *> var;
 };
-
-
-struct NodeExpr {
-    std::variant<NodeTerm *, NodeBinExpr *> var;
+struct NodeCondExprGreater {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
 };
+struct NodeCondExprGreaterEq {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
+};
+struct NodeCondExprLess {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
+};
+struct NodeCondExprLessEq {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
+};
+struct NodeCondExprEq {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
+};
+struct NodeCondExprNotEq {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
+};
+struct NodeCondExpr {
+    std::variant<NodeCondExprGreater*, NodeCondExprGreaterEq*, NodeCondExprLess*, NodeCondExprLessEq*, NodeCondExprNotEq*, NodeCondExprEq*> var;
+};
+struct NodeExpr {
+    std::variant<NodeTerm *, NodeBinExpr *, NodeCondExpr*> var;
+};
+
 
 
 struct NodeStmtExit {
@@ -138,7 +164,9 @@ public:
             }
             try_consume_err(TokenType::closed_paren);
             auto term_paren = m_allocator.emplace<NodeTermParen>();
+            term_paren->expr = expr.value();
             auto term = m_allocator.emplace<NodeTerm>();
+            term->var = term_paren;
             return term;
         }
         return {};
@@ -172,40 +200,102 @@ public:
 
             }
 
-            auto expr = m_allocator.emplace<NodeBinExpr>();
             auto expr_lhs2 = m_allocator.emplace<NodeExpr>();
+            expr_lhs2->var = expr_lhs->var;
             if (type == TokenType::plus) {
                 auto add = m_allocator.emplace<NodeBinExprAdd>();
-                expr_lhs2->var = expr_lhs->var;
                 add->lhs = expr_lhs2;
                 add->rhs = expr_rhs.value();
-                expr->var = add;
+                auto bin_expr = m_allocator.emplace<NodeBinExpr>();
+                bin_expr->var = add;
+                expr_lhs->var = bin_expr;
             } else if (type == TokenType::star) {
                 auto mult = m_allocator.emplace<NodeBinExprMult>();
-                expr_lhs2->var = expr_lhs->var;
                 mult->lhs = expr_lhs2;
                 mult->rhs = expr_rhs.value();
-                expr->var = mult;
+                auto bin_expr = m_allocator.emplace<NodeBinExpr>();
+                bin_expr->var = mult;
+                expr_lhs->var = bin_expr;
+
             } else if (type == TokenType::minus) {
                 auto sub = m_allocator.emplace<NodeBinExprSub>();
-                expr_lhs2->var = expr_lhs->var;
                 sub->lhs = expr_lhs2;
                 sub->rhs = expr_rhs.value();
-                expr->var = sub;
+                auto bin_expr = m_allocator.emplace<NodeBinExpr>();
+                bin_expr->var = sub;
+                expr_lhs->var = bin_expr;
+
             } else if (type == TokenType::fslash) {
                 auto div = m_allocator.emplace<NodeBinExprDiv>();
-                expr_lhs2->var = expr_lhs->var;
                 div->lhs = expr_lhs2;
                 div->rhs = expr_rhs.value();
-                expr->var = div;
-            } else {
+                auto bin_expr = m_allocator.emplace<NodeBinExpr>();
+                bin_expr->var = div;
+                expr_lhs->var = bin_expr;
+
+            } else if (type == TokenType::greater) {
+                auto greater = m_allocator.emplace<NodeCondExprGreater>();
+                greater->lhs = expr_lhs2;
+                greater->rhs = expr_rhs.value();
+                auto cond_expr = m_allocator.emplace<NodeCondExpr>();
+                cond_expr->var = greater;
+                expr_lhs->var = cond_expr;
+
+            }
+            else if (type == TokenType::less) {
+                auto less = m_allocator.emplace<NodeCondExprLess>();
+                less->lhs = expr_lhs2;
+                less->rhs = expr_rhs.value();
+                auto cond_expr = m_allocator.emplace<NodeCondExpr>();
+                cond_expr->var = less;
+                expr_lhs->var = cond_expr;
+
+            }
+            else if (type == TokenType::greaterequal) {
+                auto greaterequal = m_allocator.emplace<NodeCondExprGreaterEq>();
+                greaterequal->lhs = expr_lhs2;
+                greaterequal->rhs = expr_rhs.value();
+                auto cond_expr = m_allocator.emplace<NodeCondExpr>();
+                cond_expr->var = greaterequal;
+                expr_lhs->var = cond_expr;
+
+            }
+            else if (type == TokenType::lessequal) {
+                auto lessequal = m_allocator.emplace<NodeCondExprLessEq>();
+                lessequal->lhs = expr_lhs2;
+                lessequal->rhs = expr_rhs.value();
+                auto cond_expr = m_allocator.emplace<NodeCondExpr>();
+                cond_expr->var = lessequal;
+                expr_lhs->var = cond_expr;
+
+            }
+            else if (type == TokenType::equiv) {
+                auto equiv = m_allocator.emplace<NodeCondExprEq>();
+                equiv->lhs = expr_lhs2;
+                equiv->rhs = expr_rhs.value();
+                auto cond_expr = m_allocator.emplace<NodeCondExpr>();
+                cond_expr->var = equiv;
+                expr_lhs->var = cond_expr;
+
+            }
+            else if (type == TokenType::notequiv) {
+                auto notequiv = m_allocator.emplace<NodeCondExprNotEq>();
+                notequiv->lhs = expr_lhs2;
+                notequiv->rhs = expr_rhs.value();
+                auto cond_expr = m_allocator.emplace<NodeCondExpr>();
+                cond_expr->var = notequiv;
+                expr_lhs->var = cond_expr;
+
+            }
+
+            else {
                 assert(false && "unreachable");
             }
 
-            expr_lhs->var = expr;
         }
         return expr_lhs;
     }
+
 
     std::optional<NodeScope *> parse_scope() {
         if (!try_consume(TokenType::open_curly).has_value()) {
