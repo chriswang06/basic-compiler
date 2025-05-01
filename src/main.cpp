@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
         system("nasm -felf64 out.asm");
         system("ld -o out out.o");
     }
-   else if (OS == "mac") {
+    if (OS == "mac") {
         system("as -arch arm64 -o out.o out.asm");
         // system("as -arch arm64 -o out.o out.asm && clang -o out out.o && ./out");
         system("clang++ -o out out.o");

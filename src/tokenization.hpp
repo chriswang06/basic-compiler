@@ -79,11 +79,19 @@ inline std::string to_string(const TokenType type) {
         case TokenType::greater:
             return "'>'";
         case TokenType::less:
-            return "'>'";
+            return "'<'";
         case TokenType::open_curly:
             return "'{'";
         case TokenType::closed_curly:
             return "'}'";
+        case TokenType::greaterequal:
+            return "'>='";
+        case TokenType::lessequal:
+            return "'<='";
+        case TokenType::equiv:
+            return "'=='";
+        case TokenType::notequiv:
+            return "'!='";
     }
     assert(false);
 }

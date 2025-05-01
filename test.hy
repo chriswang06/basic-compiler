@@ -1,10 +1,7 @@
-let x = 10;
-let y = 100;
-if(x == y ){
-    x = 100;
-    x = 200;
-    exit(x>y);
-} else {
-    exit(0);
+let x = 100;
+let y = 10;
+if(x > y ){
+    x = 11;
+    y = x > y;
 }
-exit(x > y);
+exit(y);

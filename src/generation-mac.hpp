@@ -16,7 +16,7 @@ public:
 
             void operator()(const NodeTermIntLit *term_int_lit) const {
                 gen.m_output << "    mov x0, #" << term_int_lit->int_lit.value.value() << "\n";
-                gen.push_point("x0", gen.m_stack_size);
+                gen.push_expr("x0");
             }
 
             void operator()(const NodeTermIdent *term_ident) const {
@@ -28,8 +28,13 @@ public:
                     std::cerr << "Undeclared Identifier: " << term_ident->ident.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
-                gen.m_output << "    ldr x0, [sp, #" << (gen.m_stack_size - it->stack_loc - 1) * 8 << "]\n";
-                gen.push_point("x0", gen.m_stack_size);
+                size_t offset = it->stack_loc * 8;
+
+                gen.m_output << "    ;; Loading variable " << term_ident->ident.value.value()
+                            << " (stack_loc=" << it->stack_loc
+                            << ") from offset " << offset << "\n";
+                gen.m_output << "    ldr x0, [sp, #" << offset << "]\n";
+                gen.push_expr("x0");
             }
 
             void operator()(const NodeTermParen *term_paren) const {
@@ -47,46 +52,193 @@ public:
             void operator()(const NodeBinExprSub *sub) const {
                 gen.gen_expr(sub->rhs);
                 gen.gen_expr(sub->lhs);
-                size_t stack_size = gen.m_stack_size;
-                gen.pop_point("x1", stack_size-1);
-                gen.pop_point("x0", stack_size-2);
+                gen.pop_expr("x1");  // rhs
+                gen.pop_expr("x0");  // lhs
                 gen.m_output << "    sub x0, x0, x1\n";
-                gen.push_point("x0", gen.m_stack_size);
+                gen.push_expr("x0");
             }
 
             void operator()(const NodeBinExprAdd *add) const {
                 gen.gen_expr(add->rhs);
                 gen.gen_expr(add->lhs);
-                size_t stack_size = gen.m_stack_size;
-                gen.pop_point("x1", stack_size-1);
-                gen.pop_point("x0", stack_size-2);
+                gen.pop_expr("x1");  // rhs
+                gen.pop_expr("x0");  // lhs
                 gen.m_output << "    add x0, x0, x1\n";
-                gen.push_point("x0", gen.m_stack_size);
+                gen.push_expr("x0");
             }
 
             void operator()(const NodeBinExprMult *mult) const {
                 gen.gen_expr(mult->rhs);
                 gen.gen_expr(mult->lhs);
-                size_t stack_size = gen.m_stack_size;
-                gen.pop_point("x1", stack_size-1);
-                gen.pop_point("x0", stack_size-2);
+                gen.pop_expr("x1");  // rhs
+                gen.pop_expr("x0");  // lhs
                 gen.m_output << "    mul x0, x0, x1\n";
-                gen.push_point("x0", gen.m_stack_size);
+                gen.push_expr("x0");
             }
 
             void operator()(const NodeBinExprDiv *div) const {
                 gen.gen_expr(div->rhs);
                 gen.gen_expr(div->lhs);
-                size_t stack_size = gen.m_stack_size;
-                gen.pop_point("x1", stack_size-1);
-                gen.pop_point("x0", stack_size-2);
+                gen.pop_expr("x1");  // rhs
+                gen.pop_expr("x0");  // lhs
                 gen.m_output << "    sdiv x0, x0, x1\n";
-                gen.push_point("x0", gen.m_stack_size);
+                gen.push_expr("x0");
             }
         };
 
         BinExprVisitor visitor{.gen = *this};
         std::visit(visitor, bin_expr->var);
+    }
+
+    void gen_cond_expr(const NodeCondExpr *cond_expr) {
+        struct CondExprVisitor {
+            Generator &gen;
+
+            void operator()(const NodeCondExprGreater *greater) const {
+                gen.gen_expr(greater->lhs);
+                gen.gen_expr(greater->rhs);
+                gen.pop_expr("x1");  // rhs
+                gen.pop_expr("x0");  // lhs
+
+                const std::string true_label = "greater_" + gen.create_label();
+                const std::string end_label = "end_" + gen.create_label();
+
+                gen.m_output << "    cmp x0, x1\n";
+                gen.m_output << "    b.gt " << true_label << "\n";
+
+                // Not greater
+                gen.m_output << "    mov x0, #0\n";
+                gen.m_output << "    b " << end_label << "\n";
+
+                gen.m_output << true_label << ":\n";
+                // Greater
+                gen.m_output << "    mov x0, #1\n";
+
+                gen.m_output << end_label << ":\n";
+                gen.push_expr("x0");
+            }
+
+            void operator()(const NodeCondExprGreaterEq *greater_eq) const {
+                gen.gen_expr(greater_eq->lhs);
+                gen.gen_expr(greater_eq->rhs);
+                gen.pop_expr("x1");  // rhs
+                gen.pop_expr("x0");  // lhs
+
+                const std::string true_label = "greater_eq_" + gen.create_label();
+                const std::string end_label = "end_" + gen.create_label();
+
+                gen.m_output << "    cmp x0, x1\n";
+                gen.m_output << "    b.ge " << true_label << "\n";
+
+                // Not greater equal
+                gen.m_output << "    mov x0, #0\n";
+                gen.m_output << "    b " << end_label << "\n";
+
+                gen.m_output << true_label << ":\n";
+                // Greater equal
+                gen.m_output << "    mov x0, #1\n";
+
+                gen.m_output << end_label << ":\n";
+                gen.push_expr("x0");
+            }
+
+            void operator()(const NodeCondExprLess *less) const {
+                gen.gen_expr(less->lhs);
+                gen.gen_expr(less->rhs);
+                gen.pop_expr("x1");  // rhs
+                gen.pop_expr("x0");  // lhs
+
+                const std::string true_label = "less_" + gen.create_label();
+                const std::string end_label = "end_" + gen.create_label();
+
+                gen.m_output << "    cmp x0, x1\n";
+                gen.m_output << "    b.lt " << true_label << "\n";
+
+                // Not less
+                gen.m_output << "    mov x0, #0\n";
+                gen.m_output << "    b " << end_label << "\n";
+
+                gen.m_output << true_label << ":\n";
+                // Less
+                gen.m_output << "    mov x0, #1\n";
+
+                gen.m_output << end_label << ":\n";
+                gen.push_expr("x0");
+            }
+
+            void operator()(const NodeCondExprLessEq *less_eq) const {
+                gen.gen_expr(less_eq->lhs);
+                gen.gen_expr(less_eq->rhs);
+                gen.pop_expr("x1");  // rhs
+                gen.pop_expr("x0");  // lhs
+
+                const std::string true_label = "less_eq_" + gen.create_label();
+                const std::string end_label = "end_" + gen.create_label();
+
+                gen.m_output << "    cmp x0, x1\n";
+                gen.m_output << "    b.le " << true_label << "\n";
+
+                // Not less equal
+                gen.m_output << "    mov x0, #0\n";
+                gen.m_output << "    b " << end_label << "\n";
+
+                gen.m_output << true_label << ":\n";
+                // Less equal
+                gen.m_output << "    mov x0, #1\n";
+
+                gen.m_output << end_label << ":\n";
+                gen.push_expr("x0");
+            }
+
+            void operator()(const NodeCondExprEq *eq) const {
+                gen.gen_expr(eq->lhs);
+                gen.gen_expr(eq->rhs);
+                gen.pop_expr("x1");  // rhs
+                gen.pop_expr("x0");  // lhs
+
+                const std::string true_label = "eq_" + gen.create_label();
+                const std::string end_label = "end_" + gen.create_label();
+
+                gen.m_output << "    cmp x0, x1\n";
+                gen.m_output << "    b.eq " << true_label << "\n";
+
+                // Not equal
+                gen.m_output << "    mov x0, #0\n";
+                gen.m_output << "    b " << end_label << "\n";
+
+                gen.m_output << true_label << ":\n";
+                // Equal
+                gen.m_output << "    mov x0, #1\n";
+
+                gen.m_output << end_label << ":\n";
+                gen.push_expr("x0");
+            }
+
+            void operator()(const NodeCondExprNotEq *not_eq_) const {
+                gen.gen_expr(not_eq_->lhs);
+                gen.gen_expr(not_eq_->rhs);
+                gen.pop_expr("x1");  // rhs
+                gen.pop_expr("x0");  // lhs
+                const std::string true_label = "not_eq_" + gen.create_label();
+                const std::string end_label = "end_" + gen.create_label();
+
+                gen.m_output << "    cmp x0, x1\n";
+                gen.m_output << "    b.ne " << true_label << "\n";
+
+                // Equal
+                gen.m_output << "    mov x0, #0\n";
+                gen.m_output << "    b " << end_label << "\n";
+
+                gen.m_output << true_label << ":\n";
+                // Not equal
+                gen.m_output << "    mov x0, #1\n";
+
+                gen.m_output << end_label << ":\n";
+                gen.push_expr("x0");
+            }
+        };
+        CondExprVisitor visitor{.gen = *this};
+        std::visit(visitor, cond_expr->var);
     }
 
     void gen_expr(const NodeExpr *expr) {
@@ -100,6 +252,9 @@ public:
             void operator()(const NodeBinExpr *bin_expr) const {
                 gen.gen_bin_expr(bin_expr);
             }
+            void operator()(const NodeCondExpr *cond_expr) const {
+                gen.gen_cond_expr(cond_expr);
+            }
         };
         ExprVisitor visitor{.gen = *this};
         std::visit(visitor, expr->var);
@@ -112,17 +267,16 @@ public:
         }
         end_scope();
     }
-    void gen_if_pred(const NodeIfPred* pred, const std::string& end_label)
-    {
+
+    void gen_if_pred(const NodeIfPred* pred, const std::string& end_label) {
         struct PredVisitor {
             Generator& gen;
             const std::string& end_label;
 
-            void operator()(const NodeIfPredElif* elif) const
-            {
+            void operator()(const NodeIfPredElif* elif) const {
                 gen.m_output << "    ;; elif\n";
                 gen.gen_expr(elif->expr);
-                gen.pop_point("x0", gen.m_stack_size-1);
+                gen.pop_expr("x0");
                 const std::string label = gen.create_label();
                 gen.m_output << "    cbz x0, " << label << "\n";
                 gen.gen_scope(elif->scope);
@@ -133,8 +287,7 @@ public:
                 }
             }
 
-            void operator()(const NodeIfPredElse* else_) const
-            {
+            void operator()(const NodeIfPredElse* else_) const {
                 gen.m_output << "    ;; else\n";
                 gen.gen_scope(else_->scope);
             }
@@ -143,15 +296,20 @@ public:
         PredVisitor visitor { .gen = *this, .end_label = end_label };
         std::visit(visitor, pred->var);
     }
+
     void gen_stmt(const NodeStmt *stmt) {
         struct StmtVisitor {
             Generator &gen;
 
             void operator()(const NodeStmtExit *stmt_exit) const {
+                gen.m_output << "    ;; Evaluating exit expression\n";
                 gen.gen_expr(stmt_exit->expr);
+                gen.m_output << "    ;; Exit value on stack\n";
+
                 gen.m_output << "    ;; exit\n";
                 gen.m_output << "    mov x16, #1\n";
-                gen.pop_point("x0", gen.m_stack_size-1);
+                gen.pop_expr("x0");
+                gen.m_output << "    ;; Exit with value in x0\n";
                 gen.m_output << "    svc #0\n";
                 gen.m_output << "    ;; /exit\n";
             }
@@ -166,10 +324,21 @@ public:
                     exit(EXIT_FAILURE);
                 }
 
+                // Allocate a location for the variable
+                size_t var_loc = gen.m_var_count;
+                gen.m_vars.push_back({.name = stmt_let->ident.value.value(), .stack_loc = var_loc});
+                gen.m_var_count++;
+                gen.m_output << "    ;; variable '" << stmt_let->ident.value.value()
+              << "' allocated at offset " << var_loc * 8 << "\n";
 
-                gen.m_vars.push_back({.name = stmt_let->ident.value.value(), .stack_loc = gen.m_stack_size});
+                // Evaluate the expression
                 gen.gen_expr(stmt_let->expr);
+
+                // Store the result to the variable location
+                gen.pop_expr("x0");
+                gen.m_output << "    str x0, [sp, #" << var_loc * 8 << "]\n";
             }
+
             void operator()(const NodeStmtAssign* stmt_assign) const {
                 const auto it = std::ranges::find_if(gen.m_vars, [&](const Var& var) {
                     return var.name == stmt_assign->ident.value.value();
@@ -178,21 +347,22 @@ public:
                     std::cerr << "Undeclared identifier" << stmt_assign->ident.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
-                gen.m_output << "    ;; var reassignment\n";
+
+                gen.m_output << "    ;; reassigning variable '" << stmt_assign->ident.value.value()
+                << "' at offset " << it->stack_loc * 8 << "\n";
                 gen.gen_expr(stmt_assign->expr);
-                gen.pop_point("x0", gen.m_stack_size-1);
-                gen.m_output << "    str x0, [sp, #" << (gen.m_stack_size - it->stack_loc - 1) * 8 << "]\n";
+                gen.pop_expr("x0");
+                gen.m_output << "    str x0, [sp, #" << it->stack_loc * 8 << "]\n";
             }
 
             void operator()(const NodeScope *scope) const {
                 gen.gen_scope(scope);
             }
 
-            void operator()(const NodeStmtIf* stmt_if) const
-            {
+            void operator()(const NodeStmtIf* stmt_if) const {
                 gen.m_output << "    ;; if\n";
                 gen.gen_expr(stmt_if->expr);
-                gen.pop_point("x0", gen.m_stack_size-1);
+                gen.pop_expr("x0");
                 const std::string label = gen.create_label();
                 gen.m_output << "    cbz x0, " << label << "\n";
                 gen.gen_scope(stmt_if->scope);
@@ -208,7 +378,6 @@ public:
                 }
                 gen.m_output << "    ;; /if\n";
             }
-
         };
 
         StmtVisitor visitor{.gen = *this};
@@ -235,24 +404,17 @@ public:
     }
 
 private:
-    void push_point(const std::string &reg, const size_t pointer) {
-        m_output << "    str " << reg << ", [sp, #" << pointer*8 <<"]\n";
-        m_stack_size++;
+    // Helper methods for expression evaluation
+    void push_expr(const std::string &reg) {
+        size_t offset = m_var_count * 8 + m_expr_stack_size * 8;
+        m_output << "    str " << reg << ", [sp, #" << offset << "]\n";
+        m_expr_stack_size++;
     }
 
-    void push_offset(const std::string &reg, const size_t offset) {
-        m_output << "    str " << reg << ", [sp, #" << offset*8 << "]\n";
-        m_stack_size++;
-    }
-
-    void pop_point(const std::string &reg, const size_t pointer) {
-        m_output << "    ldr " << reg << ", [sp, #" << pointer*8 << "]\n";
-        m_stack_size--;
-    }
-
-    void pop_offset(const std::string &reg, const size_t offset) {
-        m_output << "    ldr " << reg << ", [sp, #" << offset*8 << "]\n";
-        m_stack_size--;
+    void pop_expr(const std::string &reg) {
+        m_expr_stack_size--;
+        size_t offset = m_var_count * 8 + m_expr_stack_size * 8;
+        m_output << "    ldr " << reg << ", [sp, #" << offset << "]\n";
     }
 
     void begin_scope() {
@@ -262,8 +424,7 @@ private:
     void end_scope() {
         size_t pop_count = m_vars.size() - m_scopes.back();
         if (pop_count > 0) {
-            m_output << "    add sp, sp, #" << pop_count * 8 << "\n";
-            m_stack_size -= pop_count;
+            m_var_count -= pop_count; // Adjust variable count
             for (int i = 0; i < pop_count; i++) {
                 m_vars.pop_back();
             }
@@ -271,8 +432,7 @@ private:
         m_scopes.pop_back();
     }
 
-    std::string create_label()
-    {
+    std::string create_label() {
         std::stringstream ss;
         ss << "label" << m_label_count++;
         return ss.str();
@@ -280,12 +440,13 @@ private:
 
     struct Var {
         std::string name;
-        size_t stack_loc;
+        size_t stack_loc; // Fixed offset for this variable
     };
 
     const NodeProgram m_prog;
     std::stringstream m_output;
-    size_t m_stack_size = 0;
+    size_t m_var_count = 0;        // Number of variables
+    size_t m_expr_stack_size = 0;  // Size of expression evaluation stack
     std::vector<Var> m_vars{};
     std::vector<size_t> m_scopes{};
     int m_label_count = 0;
