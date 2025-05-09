@@ -1,44 +1,25 @@
+# Simple c++ Compiler!
+
+Compiler made from scratch including parsing tree, lexical tokenizer, and asm generator
+
+## Parsing Tree
+
+<img width="464" alt="image" src="https://github.com/user-attachments/assets/0608b377-878b-48fc-923f-1bbc73a93fec" />
 
 
-Variable declaration:
-  let x = 0;
+## How to run
+
+On AArchv8 Macos and x86-64 Linux
+
+* run executable with a program argument of a .hy file as the code to be compiled.
+* View exit code with running the resulting executable file in the cmake-build-debug directory or by typing
+  ```
+  ./out
+  echo $?
+  ```
 
 
-Variable Reassignment:
-  x = 2;
-  x++;
-  x--;
-  x+=10;
-  x*=5;
-  x-=1;
-  x/=2;
-
-Scope:
-{
-  [Stmt]
-}
-
-If Statements:
-
-if([Expr]){
-  Scope
-}
-
-Expressions:
- -Binary Expressions
-   1 + 2;
-   x + y;
-   1 * 3;
- -Comparative Expressons ( true is seen as 1, false is 0 )
-   3 > 2;
-   1 == 1;
-   1 != 1;
-
-While Loops:
-
-while([expr]){
-  Scope
-}
 
 
   
+
