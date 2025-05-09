@@ -29,6 +29,12 @@ enum class TokenType {
     lessequal,
     equiv,
     notequiv,
+    compound_add,
+    compound_sub,
+    compound_mul,
+    compound_div,
+    unary_plus,
+    unary_minus,
 
 };
 
@@ -92,6 +98,22 @@ inline std::string to_string(const TokenType type) {
             return "'=='";
         case TokenType::notequiv:
             return "'!='";
+        case TokenType::while_:
+            return "'while'";
+        case TokenType::unary_minus:
+            return"'--'";
+        case TokenType::unary_plus:
+            return "'++'";
+        case TokenType::compound_add:
+            return "'+'";
+        case TokenType::compound_sub:
+            return "'-'";
+        case TokenType::compound_mul:
+            return "'*'";
+        case TokenType::compound_div:
+            return "'/'";
+        default:
+            return"";
     }
     assert(false);
 }
@@ -131,7 +153,6 @@ public:
 
     std::vector<Token> tokenize() {
         int line_count = 1;
-        int column = 0;
         std::string buffer;
         std::vector<Token> tokens;
         while (peek().has_value()) {
@@ -210,6 +231,36 @@ public:
                 consume();
                 consume();
                 tokens.push_back({TokenType::lessequal, line_count});
+            }
+            else if (peek().value() == '+' && peek(1).has_value() && peek(1).value() == '+') {
+                consume();
+                consume();
+                tokens.push_back({TokenType::unary_plus, line_count});
+            }
+            else if (peek().value() == '-' && peek(1).has_value() && peek(1).value() == '-') {
+                consume();
+                consume();
+                tokens.push_back({TokenType::unary_minus, line_count});
+            }
+            else if (peek().value() == '+' && peek(1).has_value() && peek(1).value() == '=') {
+                consume();
+                consume();
+                tokens.push_back({TokenType::compound_add, line_count});
+            }
+            else if (peek().value() == '-' && peek(1).has_value() && peek(1).value() == '=') {
+                consume();
+                consume();
+                tokens.push_back({TokenType::compound_sub, line_count});
+            }
+            else if (peek().value() == '*' && peek(1).has_value() && peek(1).value() == '=') {
+                consume();
+                consume();
+                tokens.push_back({TokenType::compound_mul, line_count});
+            }
+            else if (peek().value() == '/' && peek(1).has_value() && peek(1).value() == '=') {
+                consume();
+                consume();
+                tokens.push_back({TokenType::compound_div, line_count});
             }
             else if (peek().value() == '(') {
                 consume();

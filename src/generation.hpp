@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
-
+#include <iostream>
+#include <sstream>
 #include "./parser.hpp"
 #include "cassert"
 
@@ -326,6 +327,12 @@ public:
                     gen.m_output << label << ":\n";
                 }
                 gen.m_output << "    ;; /if\n";
+            }
+            void operator()(const NodeStmtUnary* stmt_unary) const {
+
+            }
+            void operator()(const NodeCompound* stmt_compound) const {
+
             }
 
         };

@@ -52,26 +52,28 @@ int main(int argc, char* argv[]) {
     if (!prog.has_value()) {
         std::cerr << "Invalid Program" << std::endl;
         exit(EXIT_FAILURE);
-    }
-    Generator generator(prog.value());
-    {
+    } {
+        Generator generator(prog.value());
         std::fstream file("out.asm", std::ios::out);
         file << generator.gen_prog();
     }
 
-    if (OS == "linux") {
+    if (strcmp(OS, "linux") == 0) {
         system("nasm -felf64 out.asm");
         system("ld -o out out.o");
     }
-    if (OS == "mac") {
+    else if (strcmp(OS, "mac") == 0) {
         system("as -arch arm64 -o out.o out.asm");
-        // system("as -arch arm64 -o out.o out.asm && clang -o out out.o && ./out");
         system("clang++ -o out out.o");
-        // system("ld -o out out.o");
-    } else {
+    }
+    else if (strcmp(OS, "win") == 0) {
+        // Add Windows compilation commands here
+        std::cerr << "Windows compilation not implemented" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    else {
         std::cerr << "Unknown OS" << std::endl;
         exit(EXIT_FAILURE);
     }
-
     return EXIT_SUCCESS;
 }

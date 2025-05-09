@@ -16,36 +16,36 @@ struct NodeTermIdent {
 struct NodeExpr;
 
 struct NodeTermParen {
-    NodeExpr *expr;
+    NodeExpr* expr;
 };
 
 struct NodeBinExprAdd {
-    NodeExpr *lhs;
-    NodeExpr *rhs;
+    NodeExpr* lhs;
+    NodeExpr* rhs;
 };
 
 struct NodeBinExprMult {
-    NodeExpr *lhs;
-    NodeExpr *rhs;
+    NodeExpr* lhs;
+    NodeExpr* rhs;
 };
 
 struct NodeBinExprSub {
-    NodeExpr *lhs;
-    NodeExpr *rhs;
+    NodeExpr* lhs;
+    NodeExpr* rhs;
 };
 
 struct NodeBinExprDiv {
-    NodeExpr *lhs;
-    NodeExpr *rhs;
+    NodeExpr* lhs;
+    NodeExpr* rhs;
 };
 
 struct NodeBinExpr {
-    std::variant<NodeBinExprAdd *, NodeBinExprMult *, NodeBinExprSub *, NodeBinExprDiv *> var;
+    std::variant<NodeBinExprAdd*, NodeBinExprMult*, NodeBinExprSub*, NodeBinExprDiv*> var;
 };
 
 
 struct NodeTerm {
-    std::variant<NodeTermIntLit *, NodeTermIdent *, NodeTermParen *> var;
+    std::variant<NodeTermIntLit*, NodeTermIdent*, NodeTermParen*> var;
 };
 struct NodeCondExprGreater {
     NodeExpr* lhs;
@@ -75,60 +75,92 @@ struct NodeCondExpr {
     std::variant<NodeCondExprGreater*, NodeCondExprGreaterEq*, NodeCondExprLess*, NodeCondExprLessEq*, NodeCondExprNotEq*, NodeCondExprEq*> var;
 };
 struct NodeExpr {
-    std::variant<NodeTerm *, NodeBinExpr *, NodeCondExpr*> var;
+    std::variant<NodeTerm*, NodeBinExpr*, NodeCondExpr*> var;
 };
-
-
 
 struct NodeStmtExit {
-    NodeExpr *expr;
+    NodeExpr* expr;
 };
 
+
 struct NodeStmtLet {
-    NodeExpr *expr{};
+    NodeExpr* expr{};
     Token ident;
 };
 
 struct NodeStmt;
-
-struct NodeScope {
-    std::vector<NodeStmt *> stmts;
+struct NodeUnaryAdd {
+    NodeTermIdent* term_ident;
+};
+struct NodeUnarySub{
+    NodeTermIdent* term_ident;
 };
 
+struct NodeUnary {
+    std::variant<NodeUnarySub*,NodeUnaryAdd*> var;
+};
+struct NodeScope {
+    std::vector<NodeStmt*> stmts;
+};
+struct NodeStmtWhile {
+    NodeExpr* expr;
+    NodeScope* scope;
+};
 struct NodeIfPred;
 
 struct NodeStmtIf {
-    NodeExpr *expr;
-    NodeScope *scope;
-    std::optional<NodeIfPred *> pred;
+    NodeExpr* expr;
+    NodeScope* scope;
+    std::optional<NodeIfPred* > pred;
 };
 
 
 struct NodeIfPredElif {
-    NodeExpr *expr{};
-    NodeScope *scope{};
-    std::optional<NodeIfPred *> pred;
+    NodeExpr* expr{};
+    NodeScope* scope{};
+    std::optional<NodeIfPred*> pred;
 };
 
 struct NodeIfPredElse {
-    NodeScope *scope;
+    NodeScope* scope;
 };
 
 struct NodeIfPred {
-    std::variant<NodeIfPredElif *, NodeIfPredElse *> var;
+    std::variant<NodeIfPredElif*, NodeIfPredElse*> var;
 };
 
 struct NodeStmtAssign {
     Token ident;
-    NodeExpr *expr{};
+    NodeExpr* expr{};
 };
-
+struct NodeCompoundPlus{
+    NodeTermIdent* term_ident;
+    NodeTerm* term;
+};
+struct NodeCompoundSub{
+    NodeTermIdent* term_ident;
+    NodeTerm* term;
+};
+struct NodeCompoundMult{
+    NodeTermIdent* term_ident;
+    NodeTerm* term;
+};
+struct NodeCompoundDiv{
+    NodeTermIdent* term_ident;
+    NodeTerm* term;
+};
+struct NodeCompound {
+    std::variant<NodeCompoundPlus*, NodeCompoundSub*, NodeCompoundDiv*, NodeCompoundMult*> var;
+};
+struct NodeVarReassign {
+    std::variant<NodeUnary*, NodeCompound*> var;
+};
 struct NodeStmt {
-    std::variant<NodeStmtExit *, NodeStmtLet *, NodeScope *, NodeStmtIf *, NodeStmtAssign *> var;
+    std::variant<NodeStmtExit*, NodeStmtLet*, NodeScope*, NodeStmtIf*, NodeStmtAssign*, NodeStmtWhile*, NodeVarReassign*> var;
 };
 
 struct NodeProgram {
-    std::vector<NodeStmt *> stmts;
+    std::vector<NodeStmt* > stmts;
 };
 
 class Parser {
@@ -140,9 +172,10 @@ public:
     }
     void error_expected(const std::string& msg) const{
         std::cerr << "[Parsing Error] Expected "<< msg <<" on line " << peek(-1).value().line << std::endl;
+        exit(EXIT_FAILURE);
     }
 
-    std::optional<NodeTerm *> parse_term() {
+    std::optional<NodeTerm*> parse_term() {
         if (auto int_lit = try_consume(TokenType::int_lit)) {
             auto term_int_lit = m_allocator.emplace<NodeTermIntLit>();
             term_int_lit->int_lit = int_lit.value();
@@ -172,8 +205,8 @@ public:
         return {};
     }
 
-    std::optional<NodeExpr *> parse_expr(const int min_prec = 0) {
-        std::optional<NodeTerm *> term_lhs = parse_term();
+    std::optional<NodeExpr*> parse_expr(const int min_prec = 0) {
+        std::optional<NodeTerm*> term_lhs = parse_term();
         if (!term_lhs.has_value()) {
             return {};
         }
@@ -297,7 +330,7 @@ public:
     }
 
 
-    std::optional<NodeScope *> parse_scope() {
+    std::optional<NodeScope*> parse_scope() {
         if (!try_consume(TokenType::open_curly).has_value()) {
             return {};
         }
@@ -308,8 +341,7 @@ public:
         try_consume_err(TokenType::closed_curly);
         return scope;
     }
-
-    std::optional<NodeIfPred *> parse_if_pred() {
+    std::optional<NodeIfPred*> parse_if_pred() {
         if (try_consume(TokenType::elif)) {
             try_consume_err(TokenType::open_paren);
             const auto elif = m_allocator.emplace<NodeIfPredElif>();
@@ -342,8 +374,119 @@ public:
         }
         return {};
     }
+    std::optional<NodeVarReassign*> parse_var_reassign() {
+        //parsing unary
 
-    std::optional<NodeStmt *> parse_stmt() {
+        if (peek().has_value() && peek().value().type == TokenType::ident &&
+            peek(1).has_value() && (peek(1).value().type == TokenType::unary_plus || peek(1).value().type == TokenType::unary_minus)) {
+
+            const auto term_ident = m_allocator.emplace<NodeTermIdent>();
+            term_ident->ident = consume();
+
+            if (try_consume(TokenType::unary_minus).has_value()) {
+                auto minus = m_allocator.emplace<NodeUnarySub>();
+                minus->term_ident = term_ident;
+                auto unary = m_allocator.emplace<NodeUnary>();
+                unary->var = minus;
+                auto var_reassign = m_allocator.emplace<NodeVarReassign>();
+                var_reassign->var = unary;
+                try_consume_err(TokenType::semi);
+
+                return var_reassign;
+            }
+            if (try_consume(TokenType::unary_plus).has_value()) {
+                auto plus = m_allocator.emplace<NodeUnaryAdd>();
+                plus->term_ident = term_ident;
+                auto unary = m_allocator.emplace<NodeUnary>();
+                unary->var = plus;
+                auto var_reassign = m_allocator.emplace<NodeVarReassign>();
+                var_reassign->var = unary;
+                try_consume_err(TokenType::semi);
+                return var_reassign;
+            }
+
+
+            }
+
+        //compound
+        if (peek().has_value() && peek().value().type == TokenType::ident &&
+            peek(1).has_value() && (peek(1).value().type == TokenType::compound_add ||
+            peek(1).value().type == TokenType::compound_sub ||
+            peek(1).value().type == TokenType::compound_mul ||
+            peek(1).value().type == TokenType::compound_div)) {
+
+            const auto term_ident = m_allocator.emplace<NodeTermIdent>();
+            term_ident->ident = consume();
+
+            if (try_consume(TokenType::compound_add).has_value()) {
+                auto add = m_allocator.emplace<NodeCompoundPlus>();
+                add->term_ident = term_ident;
+                if (const auto term = parse_term()) {
+                    add->term = term.value();
+                }
+                else {
+                    error_expected("'term'");
+                }
+                auto compound = m_allocator.emplace<NodeCompound>();
+                compound->var = add;
+                auto var_reassign = m_allocator.emplace<NodeVarReassign>();
+                var_reassign->var = compound;
+                try_consume_err(TokenType::semi);
+                return var_reassign;
+            }
+            if (try_consume(TokenType::compound_sub).has_value()) {
+                auto sub = m_allocator.emplace<NodeCompoundSub>();
+                sub->term_ident = term_ident;
+                if (const auto term = parse_term()) {
+                    sub->term = term.value();
+                }
+                else {
+                    error_expected("'term'");
+                }
+                auto compound = m_allocator.emplace<NodeCompound>();
+                compound->var = sub;
+                auto var_reassign = m_allocator.emplace<NodeVarReassign>();
+                var_reassign->var = compound;
+                try_consume_err(TokenType::semi);
+                return var_reassign;
+            }
+            if (try_consume(TokenType::compound_div).has_value()) {
+                auto div = m_allocator.emplace<NodeCompoundDiv>();
+                div->term_ident = term_ident;
+                if (const auto term = parse_term()) {
+                    div->term = term.value();
+                }
+                else {
+                    error_expected("'term'");
+                }
+                auto compound = m_allocator.emplace<NodeCompound>();
+                compound->var = div;
+                auto var_reassign = m_allocator.emplace<NodeVarReassign>();
+                var_reassign->var = compound;
+                try_consume_err(TokenType::semi);
+                return var_reassign;
+            }
+            if (try_consume(TokenType::compound_mul).has_value()) {
+                auto mul = m_allocator.emplace<NodeCompoundMult>();
+                mul->term_ident = term_ident;
+                if (const auto term = parse_term()) {
+                    mul->term = term.value();
+                }
+                else {
+                    error_expected("'term'");
+                }
+                auto compound = m_allocator.emplace<NodeCompound>();
+                compound->var = mul;
+                auto var_reassign = m_allocator.emplace<NodeVarReassign>();
+                var_reassign->var = compound;
+                try_consume_err(TokenType::semi);
+                return var_reassign;
+            }
+
+            }
+        return {};
+    }
+    std::optional<NodeStmt*> parse_stmt() {
         //parsing exit
         if (peek().value().type == TokenType::exit && peek(1).has_value()
             && peek(1).value().type == TokenType::open_paren) {
@@ -417,7 +560,6 @@ public:
                 stmt_if->expr = expr.value();
             } else {
                 error_expected("'expression'");
-
             }
             try_consume_err(TokenType::closed_paren);
 
@@ -432,7 +574,35 @@ public:
             stmt->var = stmt_if;
             return stmt;
         }
+        //parsing while
+        if (auto while_ = try_consume(TokenType::while_)) {
+            try_consume_err(TokenType::open_paren);
+            auto stmt_while = m_allocator.emplace<NodeStmtWhile>();
+            if (auto expr = parse_expr()) {
+                stmt_while->expr = expr.value();
+            } else {
+                error_expected("'expression'");
+            }
+            try_consume_err(TokenType::closed_paren);
+            if (auto scope = parse_scope()) {
+                stmt_while->scope = scope.value();
+            } else {
+                error_expected("'scope'");
+            }
+            auto stmt = m_allocator.emplace<NodeStmt>();
+            stmt->var = stmt_while;
+            return stmt;
+
+
+        }
+        //parsing reassign operators
+        if (auto var_reassign = parse_var_reassign()) {
+            auto stmt = m_allocator.emplace<NodeStmt>();
+            stmt->var = var_reassign.value();
+            return stmt;
+        }
         return {};
+
     }
 
     std::optional<NodeProgram> parse_prog() {
