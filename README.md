@@ -1,8 +1,8 @@
-# Simple c++ Compiler!
+# Simple c++ Compiler
 
 Compiler made from scratch including parsing tree, lexical tokenizer, and asm generator
 
-## Parsing Tree
+## Grammar
 
 <img width="464" alt="image" src="https://github.com/user-attachments/assets/0608b377-878b-48fc-923f-1bbc73a93fec" />
 
