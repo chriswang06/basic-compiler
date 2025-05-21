@@ -1,3 +1,0 @@
-/Users/chriswang/Documents/repos/basic-compiler/build/CMakeFiles/hydro.dir
-/Users/chriswang/Documents/repos/basic-compiler/build/CMakeFiles/edit_cache.dir
-/Users/chriswang/Documents/repos/basic-compiler/build/CMakeFiles/rebuild_cache.dir

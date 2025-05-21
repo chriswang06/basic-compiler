@@ -1,0 +1,6 @@
+/cmake-build-debug
+/build
+out
+out.asm
+out.o
+test.hy
