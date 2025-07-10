@@ -1,4 +1,2 @@
-out
-out.asm
-out.o
-test.hy
+cmake-build-debug/out
+cmake-build-debug/out.*
